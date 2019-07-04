@@ -144,6 +144,7 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 	 * @throws ServletException if bean properties are invalid (or required
 	 * properties are missing), or if subclass initialization fails.
 	 */
+	// 初始化所有相关的类，bean对象...
 	@Override
 	public final void init() throws ServletException {
 		if (logger.isDebugEnabled()) {
@@ -154,7 +155,9 @@ public abstract class HttpServletBean extends HttpServlet implements Environment
 		PropertyValues pvs = new ServletConfigPropertyValues(getServletConfig(), this.requiredProperties);
 		if (!pvs.isEmpty()) {
 			try {
+				// 定位资源
 				BeanWrapper bw = PropertyAccessorFactory.forBeanPropertyAccess(this);
+				// 加载配置信息
 				ResourceLoader resourceLoader = new ServletContextResourceLoader(getServletContext());
 				bw.registerCustomEditor(Resource.class, new ResourceEditor(resourceLoader, getEnvironment()));
 				initBeanWrapper(bw);

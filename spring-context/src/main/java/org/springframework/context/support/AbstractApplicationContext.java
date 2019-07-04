@@ -153,6 +153,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	static {
 		// Eagerly load the ContextClosedEvent class to avoid weird classloader issues
 		// on application shutdown in WebLogic 8.1. (Reported by Dustin Woods.)
+		// 为了避免应用程序在 Weblogic8.1 关闭时出现类加载异常加载问题， 加载 IOC 容器关闭事件(ContextClosedEvent)类
 		ContextClosedEvent.class.getName();
 	}
 
@@ -447,11 +448,13 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * <p><b>Do not call this when needing to resolve a location pattern.</b>
 	 * Call the context's {@code getResources} method instead, which
 	 * will delegate to the ResourcePatternResolver.
+	 * 获取一个 Spring Source 的加载器用于读入 Spring Bean 配置信息
 	 * @return the ResourcePatternResolver for this context
 	 * @see #getResources
 	 * @see org.springframework.core.io.support.PathMatchingResourcePatternResolver
 	 */
 	protected ResourcePatternResolver getResourcePatternResolver() {
+		// Spring 资源加载器， 其 getResource(String location)方法用于载入资源
 		return new PathMatchingResourcePatternResolver(this);
 	}
 
@@ -516,40 +519,53 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	public void refresh() throws BeansException, IllegalStateException {
 		synchronized (this.startupShutdownMonitor) {
 			// Prepare this context for refreshing.
+			// 1. 调用容器准备刷新的方法，获取容器当时的时间，同时给容器设置同步标志
 			prepareRefresh();
 
 			// Tell the subclass to refresh the internal bean factory.
+			// 2. 告诉子类启动 refreshBeanFactory()方法， Bean 定义资源文件的载入从子类的 refreshBeanFactory()方法启动
 			ConfigurableListableBeanFactory beanFactory = obtainFreshBeanFactory();
 
 			// Prepare the bean factory for use in this context.
+			// 3、 为 BeanFactory 配置容器特性， 例如类加载器、 事件处理器等
 			prepareBeanFactory(beanFactory);
 
 			try {
 				// Allows post-processing of the bean factory in context subclasses.
+				// 4、 为容器的某些子类指定特殊的 BeanFactoryPostProcessor 事件处理器
+				// IoC容器允许BeanFactoryPostProcessor在容器实例化任何bean之前读取bean的定义(配置元数据)，并可以修改它
 				postProcessBeanFactory(beanFactory);
 
 				// Invoke factory processors registered as beans in the context.
+				//5、 调用所有注册的 BeanFactoryPostProcessor 的 Bean
 				invokeBeanFactoryPostProcessors(beanFactory);
 
 				// Register bean processors that intercept bean creation.
+				//6、 为 BeanFactory 注册 BeanPost 事件处理器. BeanPostProcessor 是 Bean 后置处理器， 用于监听容器触发的事件
 				registerBeanPostProcessors(beanFactory);
 
 				// Initialize message source for this context.
+				//7、 初始化信息源， 和国际化相关.
 				initMessageSource();
 
 				// Initialize event multicaster for this context.
+				//8、 初始化容器事件传播器
 				initApplicationEventMulticaster();
 
 				// Initialize other special beans in specific context subclasses.
+				//9、 调用子类的某些特殊 Bean 初始化方法
 				onRefresh();
 
 				// Check for listener beans and register them.
+				//10、 为事件传播器注册事件监听器
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
+				//11、 初始化所有剩余的单例 Bean
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
+				//12、 初始化容器的生命周期事件处理器， 并发布容器的生命周期事件
 				finishRefresh();
 			}
 
@@ -560,9 +576,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				}
 
 				// Destroy already created singletons to avoid dangling resources.
+				//13、 销毁已创建的 Bean
 				destroyBeans();
 
 				// Reset 'active' flag.
+				//14、 取消 refresh 操作， 重置容器的同步标识.
 				cancelRefresh(ex);
 
 				// Propagate exception to caller.
@@ -571,7 +589,8 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 			finally {
 				// Reset common introspection caches in Spring's core, since we
-				// might not ever need metadata for singleton beans anymore...
+				// might not ever need metadata for singleton beans anymore..
+				//15、 重设公共缓存.
 				resetCommonCaches();
 			}
 		}
@@ -618,6 +637,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * @see #getBeanFactory()
 	 */
 	protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
+		//这里使用了委派设计模式， 父类定义了抽象的 refreshBeanFactory()方法， 具体实现调用子类容器的 refreshBeanFactory()方法
 		refreshBeanFactory();
 		ConfigurableListableBeanFactory beanFactory = getBeanFactory();
 		if (logger.isDebugEnabled()) {

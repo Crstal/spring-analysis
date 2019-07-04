@@ -408,11 +408,14 @@ public class BeanDefinitionParserDelegate {
 	/**
 	 * Parses the supplied {@code <bean>} element. May return {@code null}
 	 * if there were errors during parse. Errors are reported to the
+	 * 解析 Bean 配置信息中的<Bean>元素， 这个方法中主要处理<Bean>元素的 id， name 和别名属性
 	 * {@link org.springframework.beans.factory.parsing.ProblemReporter}.
 	 */
 	@Nullable
 	public BeanDefinitionHolder parseBeanDefinitionElement(Element ele, @Nullable BeanDefinition containingBean) {
+		//获取<Bean>元素中的 id 属性值
 		String id = ele.getAttribute(ID_ATTRIBUTE);
+		//获取<Bean>元素中的 name 属性值
 		String nameAttr = ele.getAttribute(NAME_ATTRIBUTE);
 
 		List<String> aliases = new ArrayList<>();
