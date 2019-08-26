@@ -155,6 +155,9 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		this.delegate = parent;
 	}
 
+	/**
+	 * 创建 BeanDefinitionParserDelegate，用于具体的解析过程
+	 */
 	protected BeanDefinitionParserDelegate createDelegate(
 			XmlReaderContext readerContext, Element root, @Nullable BeanDefinitionParserDelegate parentDelegate) {
 
@@ -198,6 +201,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 	}
 
+	//使用 Spring 的 Bean 规则解析 Document 元素节点
 	private void parseDefaultElement(Element ele, BeanDefinitionParserDelegate delegate) {
 		//如果元素节点是<Import>导入元素， 进行导入解析
 		if (delegate.nodeNameEquals(ele, IMPORT_ELEMENT)) {
@@ -250,7 +254,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 
 		// Absolute or relative?
-		if (absoluteLocation) {
+		if (absoluteLocation) { //	给定的路径是绝对路径
 			try {
 				//使用资源读入器加载给定路径的 Bean 配置资源
 				int importCount = getReaderContext().getReader().loadBeanDefinitions(location, actualResources);
@@ -308,10 +312,12 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		//获取<Alias>别名元素中 alias 的属性值
 		String alias = ele.getAttribute(ALIAS_ATTRIBUTE);
 		boolean valid = true;
+		// <alias> 别名元素的 name 属性值为空
 		if (!StringUtils.hasText(name)) {
 			getReaderContext().error("Name must not be empty", ele);
 			valid = false;
 		}
+		// <alias> 别名元素的 alias 属性值为空
 		if (!StringUtils.hasText(alias)) {
 			getReaderContext().error("Alias must not be empty", ele);
 			valid = false;
