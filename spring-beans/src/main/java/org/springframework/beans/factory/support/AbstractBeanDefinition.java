@@ -140,65 +140,106 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	@Nullable
 	private volatile Object beanClass;
 
+	// bean 的作用范围 ， 对应 bean 属性 scope
 	@Nullable
 	private String scope = SCOPE_DEFAULT;
 
+	// 是否是抽象．对应 bean 属性 abstract
 	private boolean abstractFlag = false;
 
+	// 是否延迟加载
 	private boolean lazyInit = false;
 
+	// 自动注入模式，对应属性autowire
 	private int autowireMode = AUTOWIRE_NO;
 
+	// 依赖检查 Spring 3.0后弃用
 	private int dependencyCheck = DEPENDENCY_CHECK_NONE;
 
+	// 川米表示一个bean 的实例化依靠另一个 bean 先实例化，对应 bean 属性 depend - on
 	@Nullable
 	private String[] dependsOn;
 
+	// aucowire-candidate 属性设置为 false，这样属性在检查自动装配时将不会考虑该 bean 对象，
+	// 即它不会被考虑作为其他 bean 自动装配的候选者，但该 bean 本身还是可以使用自动装配注入其他 bean 对象
 	private boolean autowireCandidate = true;
 
+	// bean 自动装配出现多个候选者时将作为首选者，对应 bean 属性 primary
 	private boolean primary = false;
 
+	// 川于记录 Qualifier，对应子元素 qualifier
 	private final Map<String, AutowireCandidateQualifier> qualifiers = new LinkedHashMap<>(0);
 
 	@Nullable
 	private Supplier<?> instanceSupplier;
 
+	// 允许访问非公开的构造方法，程序设置
 	private boolean nonPublicAccessAllowed = true;
 
+	/**
+	 * 是否以一种宽松的方式解析构造函数
+	 * 如果是 false，则如下情况：
+	 * interface ITest {}
+	 * class ITestimpl 工mplements I Test {} ;
+	 * class Main{
+	 * 		Mai n( ITest i ) { }
+	 * 		Main (ITestimpl i) {}
+	 * }
+	 * 抛出异常，因为 Spring 无法准确判断使用哪个构造函数
+	 * 程序设置
+	 */
 	private boolean lenientConstructorResolution = true;
 
+	/**
+	 * 对应 bean 属性 factory-bean，用法：
+	 * <bean id="instanceFactoryBean  class="example.InstanceFactoryBean" />
+	 * <bean id="currentTime" factory-bean = ”instanceFactoryBean” factory-method="createTime" />
+	 */
 	@Nullable
 	private String factoryBeanName;
 
+	// 对应 bean 属性 factory-bean
 	@Nullable
 	private String factoryMethodName;
 
+	// 记录构造函数注入属性，对应 contructor-arg
 	@Nullable
 	private ConstructorArgumentValues constructorArgumentValues;
 
+	// 普通属性集合
 	@Nullable
 	private MutablePropertyValues propertyValues;
 
+	// 方法重写的持有者，记录 lookup-method，replaced-method 元素
 	@Nullable
 	private MethodOverrides methodOverrides;
 
+	// 初始化方法，对应 init-method 属性
 	@Nullable
 	private String initMethodName;
 
+	// 销毁方法，对应 destory-method 属性
 	@Nullable
 	private String destroyMethodName;
 
+	// 是否执行 init-method，程序设置
 	private boolean enforceInitMethod = true;
 
+	// 是否执行 destory-method，程序设置
 	private boolean enforceDestroyMethod = true;
 
+	// 是否用户自定义的而不是应用程序本身定义的，创建 AOP 的时候为 true，程序设置
 	private boolean synthetic = false;
 
+	// 定义这个 bean 的应用 , APPLICATION :用户; INFRASTRUCTURE:完全内部使用，与用户无关；SUPPORT：某些复杂配置的一部分
+	// 程序设置
 	private int role = BeanDefinition.ROLE_APPLICATION;
 
+	// bean 的描述信息
 	@Nullable
 	private String description;
 
+	// bean 定义的资源
 	@Nullable
 	private Resource resource;
 
@@ -1083,6 +1124,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 	 * @throws BeanDefinitionValidationException in case of validation failure
 	 */
 	protected void prepareMethodOverride(MethodOverride mo) throws BeanDefinitionValidationException {
+		// 获取对应类中对应方法名的个数
 		int count = ClassUtils.getMethodCountForName(getBeanClass(), mo.getMethodName());
 		if (count == 0) {
 			throw new BeanDefinitionValidationException(
@@ -1091,6 +1133,7 @@ public abstract class AbstractBeanDefinition extends BeanMetadataAttributeAccess
 		}
 		else if (count == 1) {
 			// Mark override as not overloaded, to avoid the overhead of arg type checking.
+			// 标记 MethodOverride 方法暂未被被盖，避免参数类型检查的开销
 			mo.setOverloaded(false);
 		}
 	}

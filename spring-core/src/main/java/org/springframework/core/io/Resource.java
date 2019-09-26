@@ -33,7 +33,7 @@ import org.springframework.lang.Nullable;
  * <p>An InputStream can be opened for every resource if it exists in
  * physical form, but a URL or File handle can just be returned for
  * certain resources. The actual behavior is implementation-specific.
- *
+ * 封装底层资源， 抽象了所有 Spring 内部使用到的底层资源： File 、 URL 、 Classpath 等
  * @author Juergen Hoeller
  * @since 28.12.2003
  * @see #getInputStream()
@@ -149,6 +149,7 @@ public interface Resource extends InputStreamSource {
 
 	/**
 	 * Create a resource relative to this resource.
+	 * 建一个相对资源的方法
 	 * @param relativePath the relative path (relative to this resource)
 	 * @return the resource handle for the relative resource
 	 * @throws IOException if the relative resource cannot be determined

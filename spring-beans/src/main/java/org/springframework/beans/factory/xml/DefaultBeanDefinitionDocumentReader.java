@@ -132,6 +132,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		this.delegate = createDelegate(getReaderContext(), root, parent);
 
 		if (this.delegate.isDefaultNamespace(root)) {
+			// 判断项目使用环境  production / dev
 			String profileSpec = root.getAttribute(PROFILE_ATTRIBUTE);
 			if (StringUtils.hasText(profileSpec)) {
 				String[] specifiedProfiles = StringUtils.tokenizeToStringArray(
@@ -269,9 +270,12 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		}
 		else {
 			// No URL -> considering resource location as relative to the current file.
+			// 如果是相对地址则根据相对地址计算出绝对地址
 			try {
 				int importCount;
 				//将给定导入元素的 location 封装为相对路径资源
+				//Resource 存在多个子实现类，如 VfsResource 、 FileSystemResource 等，
+				// 而每个 resource 的 createRelative 方式实现方式不一样，所以这里先使用子类的方法尝试解析
 				Resource relativeResource = getReaderContext().getResource().createRelative(location);
 				//封装的相对路径资源存在
 				if (relativeResource.exists()) {
@@ -280,6 +284,7 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 					actualResources.add(relativeResource);
 				}
 				else {
+					// 如果解析不成功， 则使用默认的解析器 ResourcePatternResolver 进行解析
 					//获取 Spring IOC 容器资源读入器的基本路径
 					String baseLocation = getReaderContext().getResource().getURL().toString();
 					//根据 Spring IOC 容器资源读入器的基本路径加载给定导入路径的资源
@@ -345,6 +350,8 @@ public class DefaultBeanDefinitionDocumentReader implements BeanDefinitionDocume
 		//对 Document 对象中<Bean>元素的解析由 BeanDefinitionParserDelegate 实现
 		BeanDefinitionHolder bdHolder = delegate.parseBeanDefinitionElement(ele);
 		if (bdHolder != null) {
+			// 如果需要的话就对 beanDefinition 进行装饰
+			// 当 Spring 中的 bean 使用的是默认的标签配置，但是其中的子元素却使用了 自定义的配置时，这句代码便会起作用了
 			bdHolder = delegate.decorateBeanDefinitionIfRequired(ele, bdHolder);
 			try {
 				// Register the final decorated instance.

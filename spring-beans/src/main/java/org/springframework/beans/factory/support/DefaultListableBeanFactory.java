@@ -385,19 +385,26 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		return getBeanNamesForType(type, true, true);
 	}
 
+	// type:类的类型名称
+	// includeNonSingletons:返回数据包含了非单例beanName
+	// allowEagerInit: 可以提前加载初始化
 	@Override
 	public String[] getBeanNamesForType(@Nullable Class<?> type, boolean includeNonSingletons, boolean allowEagerInit) {
 		if (!isConfigurationFrozen() || type == null || !allowEagerInit) {
+			// 不可用缓存、类型无效、不允许提前加载初始化需要获取当前type的原始类型，继续获取数据
 			return doGetBeanNamesForType(ResolvableType.forRawClass(type), includeNonSingletons, allowEagerInit);
 		}
+		//  如果缓存已经存储了该数据，则无需再计算，直接返回即可
 		Map<Class<?>, String[]> cache =
 				(includeNonSingletons ? this.allBeanNamesByType : this.singletonBeanNamesByType);
 		String[] resolvedBeanNames = cache.get(type);
 		if (resolvedBeanNames != null) {
 			return resolvedBeanNames;
 		}
+		// 这一步就是真正的获取数据，遍历beanDefinitionNames的每一个数据，符合要求的就会加入到返回的列表中
 		resolvedBeanNames = doGetBeanNamesForType(ResolvableType.forRawClass(type), includeNonSingletons, true);
 		if (ClassUtils.isCacheSafe(type, getBeanClassLoader())) {
+			// 便于下一次获取，加入缓存中
 			cache.put(type, resolvedBeanNames);
 		}
 		return resolvedBeanNames;
@@ -803,6 +810,11 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 		//校验解析的 BeanDefiniton
 		if (beanDefinition instanceof AbstractBeanDefinition) {
 			try {
+				/**
+				 * 注册前的最后一次校验 ，这里的校验不同于之丽的 XML 文件校验，
+				 * 主要是对于 AbstractBeanDefinition 中的 methodOverrides 校验，
+				 * 校验 methodOverrides 是否与工厂方法并存或者 methodOverrides 对应的方法根本不存在
+				 */
 				((AbstractBeanDefinition) beanDefinition).validate();
 			}
 			catch (BeanDefinitionValidationException ex) {
@@ -815,6 +827,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		oldBeanDefinition = this.beanDefinitionMap.get(beanName);
 		if (oldBeanDefinition != null) {
+			// 如果对应的 BeanName 已经注册且在配置中配置了 bean 不允许被覆盖 ，则抛出异常
 			if (!isAllowBeanDefinitionOverriding()) {
 				throw new BeanDefinitionStoreException(beanDefinition.getResourceDescription(), beanName,
 						"Cannot register bean definition [" + beanDefinition + "] for bean '" + beanName +
@@ -1061,19 +1074,24 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		descriptor.initParameterNameDiscovery(getParameterNameDiscoverer());
 		if (Optional.class == descriptor.getDependencyType()) {
+			// 对于Java8中Optional类的处理
 			return createOptionalDependency(descriptor, requestingBeanName);
 		}
 		else if (ObjectFactory.class == descriptor.getDependencyType() ||
 				ObjectProvider.class == descriptor.getDependencyType()) {
+			// 对于前面讲到的提早曝光的ObjectFactory的特殊处理
 			return new DependencyObjectProvider(descriptor, requestingBeanName);
 		}
 		else if (javaxInjectProviderClass == descriptor.getDependencyType()) {
+			// javaxInjectProviderClass 类注入的特殊处理
 			return new Jsr330ProviderFactory().createDependencyProvider(descriptor, requestingBeanName);
 		}
 		else {
+			// 如果字段上带有@Lazy注解，表示进行懒加载，Spring不会立即创建注入属性的实例，而是生成代理对象，来代替实例
 			Object result = getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary(
 					descriptor, requestingBeanName);
 			if (result == null) {
+				// 通用处理逻辑
 				result = doResolveDependency(descriptor, requestingBeanName, autowiredBeanNames, typeConverter);
 			}
 			return result;
@@ -1086,33 +1104,48 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 
 		InjectionPoint previousInjectionPoint = ConstructorResolver.setCurrentInjectionPoint(descriptor);
 		try {
+			// Spring在第一次创建依赖的 bean 时，会保存该 bean 的 beanName 作为 shortcut
+			// 在第二次创建时，就可以直接根据 beanName 调用 getBean 方法，不需要再根据类型来重新查询一遍
 			Object shortcut = descriptor.resolveShortcut(this);
 			if (shortcut != null) {
 				return shortcut;
 			}
 
+			// 注入属性的类型
 			Class<?> type = descriptor.getDependencyType();
+			// 处理@Value注解-------------------------------------
+			// 获取@Value中的value属性
 			Object value = getAutowireCandidateResolver().getSuggestedValue(descriptor);
 			if (value != null) {
+				//解析value
 				if (value instanceof String) {
 					String strVal = resolveEmbeddedValue((String) value);
 					BeanDefinition bd = (beanName != null && containsBean(beanName) ? getMergedBeanDefinition(beanName) : null);
 					value = evaluateBeanDefinitionString(strVal, bd);
 				}
+				//如果需要会进行类型转换后返回结果
 				TypeConverter converter = (typeConverter != null ? typeConverter : getTypeConverter());
 				return (descriptor.getField() != null ?
 						converter.convertIfNecessary(value, type, descriptor.getField()) :
 						converter.convertIfNecessary(value, type, descriptor.getMethodParameter()));
 			}
 
+			//对数组、容器类型的处理
+			//因为是数组或容器，Sprng可以直接把符合类型的bean都注入到数组或容器中，处理逻辑是：
+			//1.确定容器或数组的组件类型
+			//2.调用findAutowireCandidates方法，获取与组件类型匹配的Map(beanName -> bean实例)
+			//3.将符合beanNames添加到autowiredBeanNames中
 			Object multipleBeans = resolveMultipleBeans(descriptor, beanName, autowiredBeanNames, typeConverter);
 			if (multipleBeans != null) {
 				return multipleBeans;
 			}
 
+			//对非数组、容器对象的处理
+			//获取所有类型匹配的Map(beanName -> bean实例)
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, type, descriptor);
 			if (matchingBeans.isEmpty()) {
 				if (isRequired(descriptor)) {
+					//如果配置了required属性为true(默认值也是true)的话，抛出异常
 					raiseNoMatchingBeanFound(type, descriptor.getResolvableType(), descriptor);
 				}
 				return null;
@@ -1121,6 +1154,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			String autowiredBeanName;
 			Object instanceCandidate;
 
+			//如果类型匹配的bean不止一个，Spring需要进行筛选，筛选失败的话抛出异常
 			if (matchingBeans.size() > 1) {
 				autowiredBeanName = determineAutowireCandidate(matchingBeans, descriptor);
 				if (autowiredBeanName == null) {
@@ -1138,6 +1172,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			else {
 				// We have exactly one match.
+				//只有一个bean与类型匹配，那么直接使用该bean
 				Map.Entry<String, Object> entry = matchingBeans.entrySet().iterator().next();
 				autowiredBeanName = entry.getKey();
 				instanceCandidate = entry.getValue();
@@ -1146,6 +1181,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			if (autowiredBeanNames != null) {
 				autowiredBeanNames.add(autowiredBeanName);
 			}
+			//如果获取到instanceCandidate是Class类型, 那么还需要beanFactory.getBean(autowiredBeanName, instanceCandidate)来获取bean的实例
+			//否则直接返回bean
 			if (instanceCandidate instanceof Class) {
 				instanceCandidate = descriptor.resolveCandidate(autowiredBeanName, type, this);
 			}
@@ -1170,7 +1207,9 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 	private Object resolveMultipleBeans(DependencyDescriptor descriptor, @Nullable String beanName,
 			@Nullable Set<String> autowiredBeanNames, @Nullable TypeConverter typeConverter) {
 
+		// 如果解析器没有成功解析， 则需要考虑各种情况
 		Class<?> type = descriptor.getDependencyType();
+		// 属性是数组类型
 		if (type.isArray()) {
 			Class<?> componentType = type.getComponentType();
 			ResolvableType resolvableType = descriptor.getResolvableType();
@@ -1182,6 +1221,8 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			if (componentType == null) {
 				return null;
 			}
+			// 根据属性类型找到 beanFactory 中所有类型的匹配 bean ,
+			// 返回值的构成为 key＝匹配的 beanName , value=beanName 对应的实例化后的 bean （通过 getBean(beanName）返 回 ）
 			Map<String, Object> matchingBeans = findAutowireCandidates(beanName, componentType,
 					new MultiElementDescriptor(descriptor));
 			if (matchingBeans.isEmpty()) {
@@ -1191,12 +1232,14 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 				autowiredBeanNames.addAll(matchingBeans.keySet());
 			}
 			TypeConverter converter = (typeConverter != null ? typeConverter : getTypeConverter());
+			// 通过转换器将 bean 的值转换为对应的 type 类型
 			Object result = converter.convertIfNecessary(matchingBeans.values(), type);
 			if (getDependencyComparator() != null && result instanceof Object[]) {
 				Arrays.sort((Object[]) result, adaptDependencyComparator(matchingBeans));
 			}
 			return result;
 		}
+		// 属性是 Collection 类型
 		else if (Collection.class.isAssignableFrom(type) && type.isInterface()) {
 			Class<?> elementType = descriptor.getResolvableType().asCollection().resolveGeneric();
 			if (elementType == null) {
@@ -1217,6 +1260,7 @@ public class DefaultListableBeanFactory extends AbstractAutowireCapableBeanFacto
 			}
 			return result;
 		}
+		// 属性是 Map 类型
 		else if (Map.class == type) {
 			ResolvableType mapType = descriptor.getResolvableType().asMap();
 			Class<?> keyType = mapType.resolveGeneric(0);

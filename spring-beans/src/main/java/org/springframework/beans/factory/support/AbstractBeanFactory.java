@@ -252,6 +252,12 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 		final String beanName = transformedBeanName(name);
 		Object bean;
 
+		/**
+		 * 检查缓存中或者实例工厂中是否有对应的实例
+		 * 在创建 bean 的时候会存在依赖注入的情况，而在创建依赖的时候为了避免循环依赖，
+		 * Spring 创建 bean 的原则是不等 bean 创建完成就会将创建 bean 的 ObjectFactory 提早曝光，
+		 * 也就是将 ObjectFactory 加入到缓存中，一旦下个 bean 创建时候需要依赖上个 bean，则直接使用 ObjectFactory
+		 */
 		// Eagerly check singleton cache for manually registered singletons.
 		//先从缓存中取是否已经有被创建过的单例类型的 Bean，对于单例模式的 Bean 整个 IOC 容器中只创建一次， 不需要重复创建
 		Object sharedInstance = getSingleton(beanName);
@@ -305,13 +311,14 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				}
 			}
 
-			//创建的 Bean 是否需要进行类型验证， 一般不需要
+			// 如果不是仅仅做类型检查则是创建 bean ， 这里要进行记录
 			if (!typeCheckOnly) {
 				//向容器标记指定的 Bean 已经被创建
 				markBeanAsCreated(beanName);
 			}
 
 			try {
+				// 将存储的 XML 配置文件的 GernericBeanDefinition 转换为 RootBeanDefinition，如果指定 BeanName 是子 Bean 的话会同时合并父类的相关属性
 				//根据指定 Bean 名称获取其父级的 Bean 定义，主要解决 Bean 继承时子类合并父类公共属性问题
 				final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
 				checkMergedBeanDefinition(mbd, beanName, args);
@@ -319,7 +326,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 				// Guarantee initialization of beans that the current bean depends on.
 				//获取当前 Bean 所有依赖 Bean 的名称
 				String[] dependsOn = mbd.getDependsOn();
-				//如果当前 Bean 有依赖 Bean
+				// 若存在依赖则需要递归实例化依赖的 bean
 				if (dependsOn != null) {
 					for (String dep : dependsOn) {
 						if (isDependent(beanName, dep)) {
@@ -1699,6 +1706,7 @@ public abstract class AbstractBeanFactory extends FactoryBeanRegistrySupport imp
 			// Caches object obtained from FactoryBean if it is a singleton.
 			//从容器中获取指定名称的 Bean 定义， 如果继承基类， 则合并基类相关属性
 			if (mbd == null && containsBeanDefinition(beanName)) {
+				// 将存储 XML 配置文件的 GernericBeanDefinition 转换为 RootBeanDefinition ，如果指定 BeanName 是子 Bean 的话同时会合并父类的相关属性
 				mbd = getMergedLocalBeanDefinition(beanName);
 			}
 			//如果从容器得到 Bean 定义信息， 并且 Bean 定义信息不是虚构的，则让工厂 Bean 生产 Bean 实例对象

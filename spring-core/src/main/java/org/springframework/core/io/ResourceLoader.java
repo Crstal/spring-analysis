@@ -50,7 +50,7 @@ public interface ResourceLoader {
 	 * <p>The handle should always be a reusable resource descriptor,
 	 * allowing for multiple {@link Resource#getInputStream()} calls.
 	 * <p><ul>
-	 * <li>Must support fully qualified URLs, e.g. "file:C:/test.dat".
+	 * <li>Must support fully qualified URLs, e.g. "FILE:C:/test.dat".
 	 * <li>Must support classpath pseudo-URLs, e.g. "classpath:test.dat".
 	 * <li>Should support relative file paths, e.g. "WEB-INF/test.dat".
 	 * (This will be implementation-specific, typically provided by an

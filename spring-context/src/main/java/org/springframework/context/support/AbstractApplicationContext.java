@@ -561,11 +561,11 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 				registerListeners();
 
 				// Instantiate all remaining (non-lazy-init) singletons.
-				//11、 初始化所有剩余的单例 Bean
+				//11、 初始化所有剩余的单例 Bean，非惰性的
 				finishBeanFactoryInitialization(beanFactory);
 
 				// Last step: publish corresponding event.
-				//12、 初始化容器的生命周期事件处理器， 并发布容器的生命周期事件
+				//12、 完成刷新过程，通知生命周期处理器 lifecycleProcessor 刷新过程，同时发出 ContextRefreshEvent 通知别人
 				finishRefresh();
 			}
 
@@ -610,10 +610,12 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Initialize any placeholder property sources in the context environment
+		// 留给子类覆盖
 		initPropertySources();
 
 		// Validate that all properties marked as required are resolvable
 		// see ConfigurablePropertyResolver#setRequiredProperties
+		// 验证需要的属性是否已经放入环境中
 		getEnvironment().validateRequiredProperties();
 
 		// Allow for the collection of early ApplicationEvents,
@@ -638,7 +640,9 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 */
 	protected ConfigurableListableBeanFactory obtainFreshBeanFactory() {
 		//这里使用了委派设计模式， 父类定义了抽象的 refreshBeanFactory()方法， 具体实现调用子类容器的 refreshBeanFactory()方法
+		// 初始化 BeanFactory，并进行 XML 文件读取 ， 并将得到的 BeanFacotry 记录在当前实体的属性 中
 		refreshBeanFactory();
+		// 返回当前实体的 beanFactory 属性
 		ConfigurableListableBeanFactory beanFactory = getBeanFactory();
 		if (logger.isDebugEnabled()) {
 			logger.debug("Bean factory for " + getDisplayName() + ": " + beanFactory);
@@ -650,15 +654,28 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 	 * Configure the factory's standard context characteristics,
 	 * such as the context's ClassLoader and post-processors.
 	 * @param beanFactory the BeanFactory to configure
+	 * 增加对 SpEL 语言的支持。（<property name="arg" value="#{表达式}">）
+	 * 增加对属性编辑器的支持。
+	 * 增加对一些内置类，比如 EnvironmentAware 、 MessageSourceAware 的信息注入。
+	 * 设置了依赖功能可忽略的接口 。
+	 * 注册一些固定依赖的属性。
+	 * 增加 AspectJ 的 支持
+	 * 将相关环境变量及属性注册以单例模式注册。
 	 */
 	protected void prepareBeanFactory(ConfigurableListableBeanFactory beanFactory) {
 		// Tell the internal bean factory to use the context's class loader etc.
+		// 设置 beanFactory 的 classLoader 为当前 context 的 classLoader
 		beanFactory.setBeanClassLoader(getClassLoader());
+		// 设置 beanFactory 的表达式语言处理器，Spring3 增加了表达式语言的支持，默认可以使用 #{bean.xxx} 的形式来调用相关属性值。
 		beanFactory.setBeanExpressionResolver(new StandardBeanExpressionResolver(beanFactory.getBeanClassLoader()));
+		// 为 beanFactory 增加了一个默认的 propertyEditor，这个主要是对 bean 的属性等设置管理的一个工具
 		beanFactory.addPropertyEditorRegistrar(new ResourceEditorRegistrar(this, getEnvironment()));
 
 		// Configure the bean factory with context callbacks.
+		// 添加 BeanPostProcessor
 		beanFactory.addBeanPostProcessor(new ApplicationContextAwareProcessor(this));
+
+		// 设置了几个忽略自动装配的接口
 		beanFactory.ignoreDependencyInterface(EnvironmentAware.class);
 		beanFactory.ignoreDependencyInterface(EmbeddedValueResolverAware.class);
 		beanFactory.ignoreDependencyInterface(ResourceLoaderAware.class);
@@ -668,6 +685,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 
 		// BeanFactory interface not registered as resolvable type in a plain factory.
 		// MessageSource registered (and found for autowiring) as a bean.
+		// 设置了几个自动装配的特殊规则
 		beanFactory.registerResolvableDependency(BeanFactory.class, beanFactory);
 		beanFactory.registerResolvableDependency(ResourceLoader.class, this);
 		beanFactory.registerResolvableDependency(ApplicationEventPublisher.class, this);
@@ -677,6 +695,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		beanFactory.addBeanPostProcessor(new ApplicationListenerDetector(this));
 
 		// Detect a LoadTimeWeaver and prepare for weaving, if found.
+		// 增加对 AspectJ 的支持
 		if (beanFactory.containsBean(LOAD_TIME_WEAVER_BEAN_NAME)) {
 			beanFactory.addBeanPostProcessor(new LoadTimeWeaverAwareProcessor(beanFactory));
 			// Set a temporary ClassLoader for type matching.
@@ -684,6 +703,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		}
 
 		// Register default environment beans.
+		// 添加默认的系统环境 bean
 		if (!beanFactory.containsLocalBean(ENVIRONMENT_BEAN_NAME)) {
 			beanFactory.registerSingleton(ENVIRONMENT_BEAN_NAME, getEnvironment());
 		}
@@ -885,7 +905,7 @@ public abstract class AbstractApplicationContext extends DefaultResourceLoader
 		//为了类型匹配， 停止使用临时的类加载器
 		beanFactory.setTempClassLoader(null);
 
-		// Allow for caching all bean definition metadata, not expecting further changes.
+		// Allow for caching all ibean definition metadata, not expecting further changes.
 		//缓存容器中所有注册的 BeanDefinition 元数据， 以防被修改
 		beanFactory.freezeConfiguration();
 

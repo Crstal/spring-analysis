@@ -53,6 +53,7 @@ public interface BeanFactoryPostProcessor {
 	 * @param beanFactory the bean factory used by the application context
 	 * @throws org.springframework.beans.BeansException in case of errors
 	 */
+	// 参数是beanFactory，这时候可以从beanFactory取出自己感兴趣的BeanDefinition 做修改。这时候Bean还没实例化的
 	void postProcessBeanFactory(ConfigurableListableBeanFactory beanFactory) throws BeansException;
 
 }

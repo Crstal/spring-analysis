@@ -31,6 +31,7 @@ package org.springframework.beans.factory;
  * and {@link org.springframework.beans.factory.support.AbstractAutowireCapableBeanFactory}
  * for examples of processing {@code *Aware} interface callbacks.
  *
+ * Aware接口是为了能够感知到自身的一些属性
  * @author Chris Beams
  * @since 3.1
  */
