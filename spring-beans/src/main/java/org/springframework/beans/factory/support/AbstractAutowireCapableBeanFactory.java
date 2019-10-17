@@ -556,7 +556,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 			instanceWrapper = this.factoryBeanInstanceCache.remove(beanName);
 		}
 		if (instanceWrapper == null) {
-			// 根据指定 bean 使用对应的策略创建新的实 例如：工厂方法 、构造函数自动注入 、简单初始化
+			// 根据指定 bean 使用对应的策略创建新的实例如：工厂方法 、构造函数自动注入 、简单初始化
 			instanceWrapper = createBeanInstance(beanName, mbd, args);
 		}
 		final Object bean = instanceWrapper.getWrappedInstance();
@@ -1169,7 +1169,7 @@ public abstract class AbstractAutowireCapableBeanFactory extends AbstractBeanFac
 				}
 			}
 		}
-		// 如果已经解析过则使川解析好的构造函数，不需要再次锁定
+		// 如果已经解析过则使用解析好的构造函数，不需要再次锁定
 		if (resolved) {
 			if (autowireNecessary) {
 				//配置了自动装配属性， 使用容器的自动装配实例化,容器的自动装配是根据参数类型匹配 Bean 的构造方法
